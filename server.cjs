@@ -7,11 +7,11 @@ const Websocket = require("ws")
 
 
 const dev = process.env.NODE_ENV !== "production";
+const port = process.env.PORT || 4005;
 const app = next({ dev });
 const handler = app.getRequestHandler();
 
-
-
+app.prepare().then(() => {
     const server = express()
     const httpServer = createServer(server)
     // Map of productId -> Set of connected WebSocket clients
@@ -90,7 +90,8 @@ const handler = app.getRequestHandler();
         return handler(req, res)
     })
 
-    httpServer.listen(4005, (err) => {
-        if (err) throw new err
-        console.log('Server is listening...');
+    httpServer.listen(port, (err) => {
+        if (err) throw err
+        console.log(`Server is listening on port ${port}...`);
     })
+})
