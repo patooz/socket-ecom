@@ -16,8 +16,8 @@ const handler = app.getRequestHandler();
     const httpServer = createServer(server)
     const watchers = new Map();
 
-    httpServer.on("connection", (ws, req) => {
-        const productId = req.url.split("/").pop();
+    httpServer.on("connection", (ws, res) => {
+        const productId = req.url && req.url.split("/").pop();
 
         if (!productId) {
             return
