@@ -4,7 +4,7 @@
   "description": "websocket for ndonyo multivendor ecommerce",
   "main": "server.cjs",
   "scripts": {
-    "dev": "nodemon server.cjs",
+    "dev": "node server.cjs",
     "build": "next build",
     "start": "NODE_ENV=production node server.cjs"
   },
