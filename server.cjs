@@ -75,7 +75,6 @@ const handler = app.getRequestHandler();
     })
 
     server.all("/{*splat}", (req, res) => {
-        console.log(req.url, "-----------------------");
         return handler(req, res)
     })
 
