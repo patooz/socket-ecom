@@ -92,5 +92,5 @@ const handler = app.getRequestHandler();
 
     httpServer.listen(4005, (err) => {
         if (err) throw new err
-        console.log('Server is listening on http://localhost:4005');
+        console.log('Server is listening...');
     })
