@@ -1,0 +1,7 @@
+{
+    "javascript.preferences.importModuleSpecifier": "relative",
+    "typescript.preferences.importModuleSpecifier": "relative",
+    "files.associations": {
+        "*.js": "javascript"
+    }
+}
