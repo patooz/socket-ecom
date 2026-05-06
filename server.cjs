@@ -14,65 +14,77 @@ const handler = app.getRequestHandler();
 
     const server = express()
     const httpServer = createServer(server)
+    // Map of productId -> Set of connected WebSocket clients
     const watchers = new Map();
 
-    httpServer.on("connection", (ws, res) => {
+    // Create WebSocket server on top of the HTTP server
+    const wss = new Websocket.Server({ server: httpServer });
+
+    wss.on("connection", (ws, req) => {
+        // Parse productId from the URL (e.g. ws://localhost:4005/product123)
         const productId = req.url && req.url.split("/").pop();
 
         if (!productId) {
-            return
+            ws.close();
+            return;
         }
 
-        // incremet the watchers count for the product  
-        const currentCount = ( watchers.get(productId) || 0) + 1;
-        watchers.set(productId, currentCount);
+        // Add this client to the watchers set for the product
+        if (!watchers.has(productId)) {
+            watchers.set(productId, new Set());
+        }
+        watchers.get(productId).add(ws);
+
+        const currentCount = watchers.get(productId).size;
 
         console.log(`User joined Product ID: ${productId}, Current watchers: ${currentCount}`);
 
-        // notify all connected clients about the new watcher count
-        watchers.get(productId)?.forEach((client) => {
-            if (client.readyState === Websocket.OPEN) {
-                client.send(JSON.stringify({
-                    type: "WATCHER_COUNT",
-                    productId,
-                    count: currentCount
-                }))
-            }
-        })
-        // handle disconnection
-        ws.on("close", () => {
-            const updatedCount = Math.max((watchers.get(productId) || 0) - 1)
-            
-            if (updatedCount === 0) {
-                watchers.delete(productId);
-            } else {
-                watchers.set(productId, updatedCount)
-            }
+        // Notify all connected clients about the new watcher count
+        broadcastToProduct(productId);
 
-            console.log(
-                `User left Product ID: ${productId}, Current watchers: ${updatedCount}`
-            )
-
-            // notify remaining clients
-            watchers.get(productId)?.forEach((client) => {
-                if (client.readyState === Websocket.OPEN) {
-                    client.send(JSON.stringify({
-                        type: "WATCHER_COUNT",
-                        productId,
-                        count: updatedCount
-                    }))
-                }
-            })
-        })
-
-        // send initial message
+        // Send initial message to the new client
         ws.send(JSON.stringify({
             message: "Connected to live server",
             currentViewers: currentCount,
             productId: productId,
             timestamp: new Date().toISOString()
-        }))
-    })
+        }));
+
+        // Handle disconnection
+        ws.on("close", () => {
+            const clients = watchers.get(productId);
+            if (clients) {
+                clients.delete(ws);
+
+                if (clients.size === 0) {
+                    watchers.delete(productId);
+                } else {
+                    broadcastToProduct(productId);
+                }
+            }
+
+            const updatedCount = watchers.get(productId)?.size || 0;
+            console.log(`User left Product ID: ${productId}, Current watchers: ${updatedCount}`);
+        });
+    });
+
+    // Helper: broadcast current watcher count to all clients watching a product
+    function broadcastToProduct(productId) {
+        const clients = watchers.get(productId);
+        if (!clients) return;
+
+        const message = JSON.stringify({
+            type: "WATCHER_COUNT",
+            productId,
+            count: clients.size
+        });
+
+        clients.forEach((client) => {
+            if (client.readyState === Websocket.OPEN) {
+                client.send(message);
+            }
+        });
+    }
 
     server.all("/{*splat}", (req, res) => {
         return handler(req, res)
