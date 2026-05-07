@@ -74,10 +74,11 @@ app.prepare().then(() => {
         if (!clients) return;
 
         const currentCount = clients.size;
+        const updatedCount = Math.max((watchers.get(productId)?.size || 0) - 1, 0);
         const message = JSON.stringify({
             type: "WATCHER_COUNT",
             productId,
-            count: currentCount
+            count: updatedCount
         });
 
         clients.forEach((client) => {
