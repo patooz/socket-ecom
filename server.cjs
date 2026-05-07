@@ -76,7 +76,7 @@ app.prepare().then(() => {
         const message = JSON.stringify({
             type: "WATCHER_COUNT",
             productId,
-            count: clients.size
+            count: updatedCount
         });
 
         clients.forEach((client) => {
