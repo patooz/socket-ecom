@@ -52,19 +52,25 @@ app.prepare().then(() => {
 
         // Handle disconnection
         ws.on("close", () => {
-            const clients = watchers.get(productId);
-            if (clients) {
-                clients.delete(ws);
+            const updatedCount = Math.max((watchers.get(productId)?.size || 0) - 1, 0);
+            console.log(`User left Product ID: ${productId}, Current watchers: ${updatedCount}`);
 
-                if (clients.size === 0) {
-                    watchers.delete(productId);
-                } else {
-                    broadcastToProduct(productId);
-                }
+            if (updatedCount === 0) {
+                watchers.delete(productId);
+            } else {
+                watchers.set(productId, new Set([...watchers.get(productId).values()].filter(client => client !== ws)));
             }
 
-            const updatedCount = watchers.get(productId)?.size || 0;
-            console.log(`User left Product ID: ${productId}, Current watchers: ${updatedCount}`);
+            // notify clients about the updated watcher count
+            wss.clients.forEach(client => {
+                if (client.readyState === Websocket.OPEN) {
+                    client.send(JSON.stringify({
+                        type: "WATCHER_COUNT",
+                        productId,
+                        count: updatedCount
+                    }));
+                }
+            });
         });
     });
 
@@ -74,11 +80,10 @@ app.prepare().then(() => {
         if (!clients) return;
 
         const currentCount = clients.size;
-        const updatedCount = Math.max((watchers.get(productId)?.size || 0) - 1, 0);
         const message = JSON.stringify({
             type: "WATCHER_COUNT",
             productId,
-            count: updatedCount
+            count: currentCount
         });
 
         clients.forEach((client) => {
