@@ -1,0 +1,27 @@
+# Render Blueprint — Infrastructure-as-code for the socket-ecom service
+# Deploy this file from the Render Dashboard: New + > Blueprint
+
+services:
+  # ── WebSocket server ──────────────────────────────────────────────
+  - type: web
+    name: socket-ecom
+    env: node
+    region: frankfurt
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "4005"
+
+# ── Cron jobs ──────────────────────────────────────────────────────
+cronJobs:
+  - name: health-check-ping
+    schedule: "*/10 * * * *" # Every 10 minutes
+    command: curl -I https://socket-ecom.onrender.com/health
+    # This periodic ping prevents the free-tier web service from
+    # spinning down due to inactivity (Render free tier spins down
+    # after 15 minutes of no traffic).

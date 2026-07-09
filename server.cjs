@@ -20,6 +20,30 @@ app.prepare().then(() => {
     // Create WebSocket server on top of the HTTP server
     const wss = new Websocket.Server({ server: httpServer });
 
+    // ── Health-check endpoint ──────────────────────────────────────────────
+    // Used by external uptime monitors to keep the Render free tier from
+    // spinning down. The client also attempts a fetch here before connecting.
+    server.get("/health", (_req, res) => {
+        res.status(200).json({
+            status: "ok",
+            uptime: process.uptime(),
+            activeProducts: watchers.size,
+            timestamp: new Date().toISOString(),
+        });
+    });
+
+    // ── Keep-alive ping ───────────────────────────────────────────────────
+    // Send a WebSocket ping frame every 25 seconds to prevent proxies
+    // and Render's load balancer from closing idle connections.
+    const KEEPALIVE_INTERVAL = 25000;
+    const keepAliveTimer = setInterval(() => {
+        wss.clients.forEach((client) => {
+            if (client.readyState === Websocket.OPEN) {
+                client.ping();
+            }
+        });
+    }, KEEPALIVE_INTERVAL);
+
     wss.on("connection", (ws, req) => {
         // Parse productId from the URL (e.g. ws://localhost:4005/product123)
         const productId = req.url && req.url.split("/").pop();
@@ -101,4 +125,9 @@ app.prepare().then(() => {
         if (err) throw err
         console.log(`Server is listening on port ${port}...`);
     })
+
+    // Clean up the keep-alive timer when the server closes
+    wss.on("close", () => {
+        clearInterval(keepAliveTimer);
+    });
 })
